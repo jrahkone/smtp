@@ -34,29 +34,55 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
  * Simple SMTP Server for testing purposes.
+ * Checkout: git clone https://github.com/jrahkone/smtp
  * @author jukka.rahkonen@iki.fi
  */
-public class SmtpServer {
+public class SmtpServer extends Thread {
 
 	public static void main(String args[]) throws Exception {
-		int port = 2525;
-		ServerSocket ssock = new ServerSocket(port);
-		print("smtp server listening on port: "+port);
-		while (true) {
-			Socket sock = ssock.accept();
-			String ip = sock.getInetAddress().getHostAddress();
-			print("new connection from: "+ip);
-			Session s = new Session(sock);
-			if (!s.handle()) break;
-		}
+		SmtpServer smtp = new SmtpServer(2525); 
+		smtp.start();
+		print("started");
+		Thread.sleep(10000);
+		print("kill");
+		smtp.kill();
 		print("exit");
 	}
+
+	int port;
+	SmtpServer(int port) { this.port=port;}
 	
+	@Override
+	public void run() {
+		try {
+			ServerSocket ssock = new ServerSocket(port);
+			print("smtp server listening on port: "+port);
+			while (true) {
+				Socket sock = ssock.accept();
+				String ip = sock.getInetAddress().getHostAddress();
+				print("new connection from: "+ip);
+				Session s = new Session(sock);
+				if (!s.handle()) break;
+			}
+		} catch (Exception e) { print("exception:"+e);}	
+	}
+
+	public void kill() {
+		try {
+			Socket s = new Socket("localhost",port);
+			OutputStream os = s.getOutputStream();
+			os.write("KILL\r\n".getBytes());
+			os.flush();
+			//s.close();
+		}catch(Exception e) {print("could not kill server");}
+	}
+
 	public static class Session {
 		Socket s;
 		BufferedInputStream bis;
@@ -124,6 +150,7 @@ public class SmtpServer {
 			} 
 			writeLine("221 Bye");
 			s.close();
+			if (cmd.equals("KILL")) { return false;}
 			print("YOU GOT MAIL:\n================================");
 			print(mail.toString());
 			print("================================");
@@ -137,5 +164,4 @@ public class SmtpServer {
 	    BufferedWriter writer = new BufferedWriter(new FileWriter(fname));
 	    writer.write(data); writer.close();
 	}
-	
 }
