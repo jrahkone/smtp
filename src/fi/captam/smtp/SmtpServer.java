@@ -1,14 +1,50 @@
+/*
+Copyright (c) 2018, Jukka Rahkonen, Captam Finland Ltd
+All rights reserved.
+
+FreeBSD License
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those
+of the authors and should not be interpreted as representing official policies,
+either expressed or implied, of the Simple SMTP Server project.
+ */
 package fi.captam.smtp;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/**
+ * Simple SMTP Server for testing purposes.
+ * @author jukka.rahkonen@iki.fi
+ */
 public class SmtpServer {
 
 	public static void main(String args[]) throws Exception {
-		int port = 9999;
+		int port = 2525;
 		ServerSocket ssock = new ServerSocket(port);
 		print("smtp server listening on port: "+port);
 		while (true) {
@@ -59,24 +95,27 @@ public class SmtpServer {
 		}
 		public boolean handle() throws Exception {
 			writeLine("220 foo.bar.com simple smtp server");
-			String cmd = readLine(); add(cmd);
+			String cmd = readLine();
 			if (cmd.startsWith("HELO")||cmd.startsWith("EHLO")) {
 				writeLine("250 foo.bar.com ready");
 				while (true) {
-					cmd = readLine(); add(cmd);
+					cmd = readLine();
 					if (cmd.equals("QUIT")) { break;}
 					if (cmd.equals("DATA")) {
 						writeLine("354 End data with <CR><LF>.<CR><LF>");
+						add(cmd);
 						String msg = readData();
 						writeLine("250 Ok: mail queued.");
 						add(msg);
 						continue;
 					}
 					if (cmd.startsWith("MAIL FROM:")) {
+						add(cmd);
 						writeLine("250 Ok");
 						continue; 
 					}
-					if (cmd.startsWith("RCPT TO:")) { 
+					if (cmd.startsWith("RCPT TO:")) {
+						add(cmd);
 						writeLine("250 Ok");
 						continue; 
 					}
@@ -88,11 +127,15 @@ public class SmtpServer {
 			print("YOU GOT MAIL:\n================================");
 			print(mail.toString());
 			print("================================");
+			writeFile("/tmp/tmp-email.txt",mail.toString());
 			return true;
 		}
 	}
 	
 	public static void print(String msg) {System.out.println(msg);}
-
+	public static void writeFile(String fname, String data) throws Exception {
+	    BufferedWriter writer = new BufferedWriter(new FileWriter(fname));
+	    writer.write(data); writer.close();
+	}
 	
 }
