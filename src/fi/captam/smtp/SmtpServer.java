@@ -37,6 +37,8 @@ import java.io.FileWriter;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Simple SMTP Server for testing purposes.
@@ -46,8 +48,7 @@ import java.net.Socket;
 public class SmtpServer extends Thread {
 
 	public static void main(String args[]) throws Exception {
-		SmtpServer smtp = new SmtpServer(2525); 
-		smtp.start();
+		SmtpServer smtp = new SmtpServer(2525);
 		print("started");
 		Thread.sleep(10000);
 		print("kill");
@@ -56,7 +57,8 @@ public class SmtpServer extends Thread {
 	}
 
 	int port;
-	SmtpServer(int port) { this.port=port;}
+	List<String> mails = new ArrayList<String>();
+	SmtpServer(int port) { this.port=port;this.start();}
 	
 	@Override
 	public void run() {
@@ -70,6 +72,7 @@ public class SmtpServer extends Thread {
 				Session s = new Session(sock);
 				if (!s.handle()) break;
 			}
+			print("Server done");
 		} catch (Exception e) { print("exception:"+e);}	
 	}
 
@@ -79,11 +82,10 @@ public class SmtpServer extends Thread {
 			OutputStream os = s.getOutputStream();
 			os.write("KILL\r\n".getBytes());
 			os.flush();
-			//s.close();
-		}catch(Exception e) {print("could not kill server");}
+		} catch(Exception e) {print("could not kill server:"+e);}
 	}
 
-	public static class Session {
+	public class Session {
 		Socket s;
 		BufferedInputStream bis;
 		BufferedOutputStream bos;
@@ -95,7 +97,7 @@ public class SmtpServer extends Thread {
 			bis = new BufferedInputStream(s.getInputStream());
 		}
 		public void flush() throws Exception { bos.flush();}
-		public void writeLine(String msg) throws Exception { bos.write((msg+"\r\n").getBytes()); flush(); print("S:"+msg);}
+		public void writeLine(String msg) throws Exception { bos.write((msg+"\r\n").getBytes()); flush();}
 		public String readLine() throws Exception {
 			StringBuilder sb = new StringBuilder();
 			int last=0;
@@ -107,7 +109,6 @@ public class SmtpServer extends Thread {
 				if (b=='\r') continue;
 				sb.append((char)b);
 			}
-			print("C:"+sb.toString());
 			return sb.toString();
 		}
 		public String readData() throws Exception {
@@ -151,16 +152,23 @@ public class SmtpServer extends Thread {
 			writeLine("221 Bye");
 			s.close();
 			if (cmd.equals("KILL")) { return false;}
-			print("YOU GOT MAIL:\n================================");
-			print(mail.toString());
-			print("================================");
-			writeFile("/tmp/tmp-email.txt",mail.toString());
+			mails.add(mail.toString());
+			print("GOT MAIL: "+mail.length()+" bytes");
 			return true;
 		}
 	}
-	
+
+	public void clear() { mails = new ArrayList<String>();}
+	public boolean anyMailContains(String str) {
+		for (String mail:mails) if(mail.contains(str)) return true;
+		return false;
+	}
+	public String getLastMail() {if (mails.size()==0) return null; return mails.get(mails.size()-1);}
+	public boolean lastMailContains(String str) {if(getLastMail()==null) return false; return getLastMail().contains(str);}
+	public void writeToFile(String fname) throws Exception { writeFile(fname,getLastMail());}
 	public static void print(String msg) {System.out.println(msg);}
 	public static void writeFile(String fname, String data) throws Exception {
+		if (data==null) return;
 	    BufferedWriter writer = new BufferedWriter(new FileWriter(fname));
 	    writer.write(data); writer.close();
 	}
