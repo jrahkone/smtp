@@ -50,10 +50,10 @@ public class SmtpServer extends Thread {
 	public static void main(String args[]) throws Exception {
 		SmtpServer smtp = new SmtpServer(2525);
 		print("started");
-		Thread.sleep(10000);
-		print("kill");
-		smtp.kill();
-		print("exit");
+		//Thread.sleep(10000);
+		//print("kill");
+		//smtp.kill();
+		//print("exit");
 	}
 
 	int port;
@@ -154,6 +154,7 @@ public class SmtpServer extends Thread {
 			if (cmd.equals("KILL")) { return false;}
 			mails.add(mail.toString());
 			print("GOT MAIL: "+mail.length()+" bytes");
+			writeToFile("mail.html");
 			return true;
 		}
 	}
